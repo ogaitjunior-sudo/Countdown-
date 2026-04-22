@@ -1,12 +1,17 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download } from "lucide-react";
-import { getEffectComponent } from "@/effects/EffectRenderer";
+import { Download, Gauge } from "lucide-react";
+import { EffectSpeedProvider, getEffectComponent } from "@/effects/EffectRenderer";
 import { downloadEffectVideo } from "@/effects/videoExport";
 import { effects, categoryLabels, type EffectCategory, type EffectDef } from "@/effects/registry";
 
 type FilterKey = EffectCategory | "all" | "favorites";
 const filters: FilterKey[] = ["all", "countdown", "bingo", "favorites"];
+const MIN_EFFECT_SPEED = 0.5;
+const MAX_EFFECT_SPEED = 3;
+
+const clampEffectSpeed = (speed: number) => Math.min(MAX_EFFECT_SPEED, Math.max(MIN_EFFECT_SPEED, speed || 1));
+const formatEffectSpeed = (speed: number) => `${Number.isInteger(speed) ? speed.toFixed(0) : speed.toFixed(2)}x`;
 
 // ─── Ambient Particle Background ───
 const AmbientParticles: React.FC = () => {
@@ -60,6 +65,10 @@ const Index: React.FC = () => {
   const [search, setSearch] = useState("");
   const [exportingId, setExportingId] = useState<number | null>(null);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const [effectSpeed, setEffectSpeed] = useState(() => {
+    const stored = Number(localStorage.getItem("fx-speed"));
+    return Number.isFinite(stored) ? clampEffectSpeed(stored) : 1;
+  });
 
   const selectEffect = useCallback((id: number) => {
     setActiveEffect(id);
@@ -79,12 +88,17 @@ const Index: React.FC = () => {
       return next;
     });
   }, []);
+  const changeEffectSpeed = useCallback((speed: number) => {
+    const next = clampEffectSpeed(speed);
+    setEffectSpeed(next);
+    localStorage.setItem("fx-speed", String(next));
+  }, []);
   const downloadEffect = useCallback(async (effect: EffectDef) => {
     if (exportingId !== null) return;
     setExportingId(effect.id);
-    setExportNotice("Gerando video em fundo branco...");
+    setExportNotice(`Gerando video em fundo branco (${formatEffectSpeed(effectSpeed)})...`);
     try {
-      const result = await downloadEffectVideo(effect);
+      const result = await downloadEffectVideo(effect, effectSpeed);
       setExportNotice(result.mimeType.includes("mp4") ? "MP4 baixado em fundo branco" : "Video baixado em fundo branco");
     } catch (error) {
       setExportNotice(error instanceof Error ? error.message : "Nao foi possivel baixar o video.");
@@ -92,7 +106,7 @@ const Index: React.FC = () => {
       setExportingId(null);
       window.setTimeout(() => setExportNotice(null), 4500);
     }
-  }, [exportingId]);
+  }, [effectSpeed, exportingId]);
 
   const filtered = effects.filter(e => {
     if (filter === "favorites") return favorites.has(e.id);
@@ -159,7 +173,9 @@ const Index: React.FC = () => {
           {EffectComponent ? (
             <motion.div key={`${activeEffect}-${effectKey}`} className="w-full h-full"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-              <EffectComponent />
+              <EffectSpeedProvider speed={effectSpeed}>
+                <EffectComponent />
+              </EffectSpeedProvider>
             </motion.div>
           ) : (
             <motion.div key="empty" className="flex flex-col items-center gap-4"
@@ -189,6 +205,24 @@ const Index: React.FC = () => {
           )}
         </div>
         <div className="flex items-center gap-2 overflow-x-auto">
+          <div
+            className="flex shrink-0 items-center gap-2 rounded-lg border border-border/50 bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground"
+            title="Controlar velocidade do efeito"
+          >
+            <Gauge className="h-3.5 w-3.5 text-primary" />
+            <span className="hidden md:inline">Velocidade</span>
+            <input
+              aria-label="Velocidade do efeito"
+              type="range"
+              min={MIN_EFFECT_SPEED}
+              max={MAX_EFFECT_SPEED}
+              step={0.25}
+              value={effectSpeed}
+              onChange={event => changeEffectSpeed(Number(event.target.value))}
+              className="h-1.5 w-24 accent-primary"
+            />
+            <span className="w-10 text-right font-semibold text-primary">{formatEffectSpeed(effectSpeed)}</span>
+          </div>
           <button
             onClick={() => activeEffectDef && downloadEffect(activeEffectDef)}
             disabled={!activeEffectDef || exportingId !== null}

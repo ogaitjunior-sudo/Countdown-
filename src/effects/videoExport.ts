@@ -3,6 +3,8 @@ import type { EffectDef } from "./registry";
 const WIDTH = 1920;
 const HEIGHT = 1080;
 const FPS = 60;
+const MIN_EFFECT_SPEED = 0.5;
+const MAX_EFFECT_SPEED = 3;
 
 const BINGO_SEQUENCE = ["3", "2", "1", "B", "I", "N", "G", "O", "BINGO"];
 const BINGO_LETTERS = ["B", "I", "N", "G", "O"];
@@ -26,6 +28,10 @@ export interface VideoExportResult {
 
 function clamp(value: number, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
+}
+
+function clampEffectSpeed(speed: number) {
+  return Math.min(MAX_EFFECT_SPEED, Math.max(MIN_EFFECT_SPEED, speed || 1));
 }
 
 function easeOutBack(t: number) {
@@ -509,7 +515,7 @@ async function renderToRecorder(ctx: CanvasRenderingContext2D, effect: EffectDef
   });
 }
 
-export async function downloadEffectVideo(effect: EffectDef): Promise<VideoExportResult> {
+export async function downloadEffectVideo(effect: EffectDef, speed = 1): Promise<VideoExportResult> {
   if (typeof MediaRecorder === "undefined") {
     throw new Error("Este navegador nao suporta gravacao de video.");
   }
@@ -540,7 +546,7 @@ export async function downloadEffectVideo(effect: EffectDef): Promise<VideoExpor
     recorder.onerror = () => reject(new Error("Falha ao gravar o video."));
   });
 
-  const duration = effect.category === "bingo" ? 7200 : 4600;
+  const duration = Math.round((effect.category === "bingo" ? 7200 : 4600) / clampEffectSpeed(speed));
   drawExportFrame(ctx, effect, 0, duration);
   await renderToRecorder(ctx, effect, recorder, duration);
   recorder.stop();

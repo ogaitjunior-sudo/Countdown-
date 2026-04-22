@@ -5,19 +5,40 @@ interface EffectProps {
   onComplete?: () => void;
 }
 
+const MIN_EFFECT_SPEED = 0.5;
+const MAX_EFFECT_SPEED = 3;
+
+function clampEffectSpeed(speed: number) {
+  return Math.min(MAX_EFFECT_SPEED, Math.max(MIN_EFFECT_SPEED, speed || 1));
+}
+
+const EffectSpeedContext = React.createContext(1);
+
+export const EffectSpeedProvider: React.FC<{ speed: number; children: React.ReactNode }> = ({ speed, children }) => (
+  <EffectSpeedContext.Provider value={clampEffectSpeed(speed)}>
+    {children}
+  </EffectSpeedContext.Provider>
+);
+
+function useEffectSpeed() {
+  return clampEffectSpeed(React.useContext(EffectSpeedContext));
+}
+
 // ─── Countdown hook ───
 function useCountdownSeq(items: string[], interval: number, onDone?: () => void) {
+  const speed = useEffectSpeed();
+  const scaledInterval = Math.max(80, Math.round(interval / speed));
   const [idx, setIdx] = useState(0);
   const [done, setDone] = useState(false);
   useEffect(() => {
     if (idx < items.length - 1) {
-      const t = setTimeout(() => setIdx(idx + 1), interval);
+      const t = setTimeout(() => setIdx(idx + 1), scaledInterval);
       return () => clearTimeout(t);
     } else {
-      const t = setTimeout(() => { setDone(true); onDone?.(); }, interval);
+      const t = setTimeout(() => { setDone(true); onDone?.(); }, scaledInterval);
       return () => clearTimeout(t);
     }
-  }, [idx, items.length, interval]);
+  }, [idx, items.length, onDone, scaledInterval]);
   return { current: items[idx], idx, done };
 }
 
