@@ -179,7 +179,7 @@ const Index: React.FC = () => {
       <div className="fixed top-0 left-0 right-0 z-30 px-4 md:px-6 py-2.5 flex items-center justify-between gap-3 bg-background/60 backdrop-blur-xl border-b border-border/50">
         <div className="flex items-center gap-4">
           <h1 className="text-base md:text-lg font-bold text-foreground whitespace-nowrap">
-            <span className="text-primary glow-text-primary">🎬</span> Trivia & Countdown FX
+            <span className="text-primary glow-text-primary">🎬</span> Gabriel Mendes - Countdown
           </h1>
           {activeName && (
             <motion.span key={activeName} initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }}

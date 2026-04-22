@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# Gabriel Mendes - Countdown
 
-TODO: Document your project here
+Countdown effects project by Gabriel Mendes.
